@@ -150,7 +150,10 @@ internal fun MediaPlayerControls(
                         .size(72.dp),
                 )
             }
-            PlayerGestureIndicators(tapGestureState = tapGestureState)
+            PlayerGestureIndicators(
+                tapGestureState = tapGestureState,
+                longPressBackgroundOpacity = playerPreferences.longPressBackgroundOpacity,
+            )
             DpadSeekIndicator(
                 visible = keyInputState.isSeeking && keyInputState.seekOffsetMs != 0L,
                 offsetMs = keyInputState.seekOffsetMs,

@@ -69,6 +69,9 @@ class GesturePreferencesViewModel(
                     action.value,
                 )
 
+            is GesturePreferencesUiEvent.UpdateLongPressBackgroundOpacity ->
+                updateLongPressBackgroundOpacity(action.value)
+
             is GesturePreferencesUiEvent.UpdateSeekIncrement -> updateSeekIncrement(action.value)
 
             is GesturePreferencesUiEvent.UpdateSeekSensitivity -> updateSeekSensitivity(
@@ -167,6 +170,19 @@ class GesturePreferencesViewModel(
         }
     }
 
+    private fun updateLongPressBackgroundOpacity(value: Float) {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(
+                    longPressBackgroundOpacity = value.coerceIn(
+                        0f,
+                        1f,
+                    ),
+                )
+            }
+        }
+    }
+
     private fun updateSeekIncrement(value: Int) {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences { it.copy(seekIncrement = value) }
@@ -222,6 +238,7 @@ sealed interface GesturePreferencesUiEvent {
     data object ToggleUseZoomControls : GesturePreferencesUiEvent
     data object ToggleEnablePanGesture : GesturePreferencesUiEvent
     data class UpdateLongPressControlsSpeed(val value: Float) : GesturePreferencesUiEvent
+    data class UpdateLongPressBackgroundOpacity(val value: Float) : GesturePreferencesUiEvent
     data class UpdateSeekIncrement(val value: Int) : GesturePreferencesUiEvent
     data class UpdateSeekSensitivity(val value: Float) : GesturePreferencesUiEvent
     data class UpdateVolumeGestureSensitivity(val value: Float) : GesturePreferencesUiEvent

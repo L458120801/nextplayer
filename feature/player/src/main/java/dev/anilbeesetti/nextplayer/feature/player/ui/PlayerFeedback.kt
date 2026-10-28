@@ -116,7 +116,10 @@ internal fun BoxScope.DpadSeekIndicator(visible: Boolean, offsetMs: Long, positi
 }
 
 @Composable
-internal fun BoxScope.PlayerGestureIndicators(tapGestureState: TapGestureState) {
+internal fun BoxScope.PlayerGestureIndicators(
+    tapGestureState: TapGestureState,
+    longPressBackgroundOpacity: Float,
+) {
     DoubleTapIndicator(tapGestureState = tapGestureState)
 
     AnimatedVisibility(
@@ -127,7 +130,10 @@ internal fun BoxScope.PlayerGestureIndicators(tapGestureState: TapGestureState) 
         enter = fadeIn(),
         exit = fadeOut(),
     ) {
-        Surface(shape = CircleShape) {
+        Surface(
+            shape = CircleShape,
+            color = Color.Black.copy(alpha = longPressBackgroundOpacity),
+        ) {
             Row(
                 modifier = Modifier.padding(
                     horizontal = 16.dp,

@@ -4,26 +4,124 @@ import android.content.Context
 import android.net.Uri
 import androidx.core.net.toUri
 import java.io.File
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 suspend fun File.getSubtitles(): List<File> = withContext(Dispatchers.IO) {
-    val mediaName = this@getSubtitles.nameWithoutExtension
-    val parentDir = this@getSubtitles.parentFile
-    val subtitleExtensions = listOf(
-        "srt",
-        "ssa",
-        "ass",
-        "vtt",
-        "ttml",
-    )
+    val mediaName = nameWithoutExtension
+    val parentDir = parentFile ?: File(".")
+    parentDir.listFiles()
+        ?.asSequence()
+        ?.filter { it.isFile && it.extension.lowercase(Locale.ROOT) in subtitleExtensions }
+        ?.filter { subtitle -> subtitle.nameWithoutExtension.isSubtitleFor(mediaName) }
+        ?.sortedBy { it.name.lowercase(Locale.ROOT) }
+        ?.toList()
+        .orEmpty()
+}
 
-    subtitleExtensions.mapNotNull { extension ->
-        val file = File(
-            parentDir,
-            "$mediaName.$extension",
-        )
-        file.takeIf { it.exists() && it.isFile }
+private val subtitleExtensions = setOf(
+    "srt",
+    "ssa",
+    "ass",
+    "vtt",
+    "ttml",
+)
+private val subtitleFlags = setOf(
+    "forced",
+    "default",
+    "sdh",
+    "cc",
+    "hi",
+    "commentary",
+)
+private val subtitleLanguageCodes = setOf(
+    "ara",
+    "ben",
+    "bul",
+    "cat",
+    "ces",
+    "chi",
+    "chs",
+    "cht",
+    "dan",
+    "deu",
+    "dut",
+    "ell",
+    "eng",
+    "fas",
+    "fin",
+    "fre",
+    "fra",
+    "ger",
+    "gre",
+    "heb",
+    "hin",
+    "hrv",
+    "hun",
+    "ind",
+    "ita",
+    "jpn",
+    "jp",
+    "kan",
+    "kor",
+    "kr",
+    "mal",
+    "mar",
+    "msa",
+    "may",
+    "nld",
+    "nor",
+    "per",
+    "pol",
+    "por",
+    "ron",
+    "rum",
+    "rus",
+    "slk",
+    "slo",
+    "spa",
+    "srp",
+    "swe",
+    "tam",
+    "tel",
+    "tha",
+    "tgl",
+    "tur",
+    "ukr",
+    "urd",
+    "vie",
+    "zho",
+    "und",
+)
+private val subtitleLanguageTagPattern = Regex(
+    pattern = "[a-z]{2,3}(?:-[a-z0-9]{2,8})*",
+    option = RegexOption.IGNORE_CASE,
+)
+private val isoLanguageCodes = Locale.getISOLanguages().mapTo(mutableSetOf()) {
+    it.lowercase(Locale.ROOT)
+}
+private val supportedSubtitleLanguageCodes = isoLanguageCodes + subtitleLanguageCodes
+
+private fun String.isSubtitleFor(mediaName: String): Boolean {
+    val isExactName = equals(
+        other = mediaName,
+        ignoreCase = true,
+    )
+    if (isExactName) return true
+    val startsWithMediaName = startsWith(
+        prefix = "$mediaName.",
+        ignoreCase = true,
+    )
+    if (!startsWithMediaName) return false
+
+    val qualifiers = substring(startIndex = mediaName.length + 1).split('.')
+    return qualifiers.isNotEmpty() && qualifiers.all { qualifier ->
+        val normalizedQualifier = qualifier.lowercase(Locale.ROOT)
+        val isLanguageTag = normalizedQualifier.matches(
+            subtitleLanguageTagPattern,
+        ) && normalizedQualifier.substringBefore('-') in supportedSubtitleLanguageCodes
+        normalizedQualifier in subtitleFlags || isLanguageTag
     }
 }
 

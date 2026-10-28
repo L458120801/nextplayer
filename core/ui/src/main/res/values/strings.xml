@@ -170,6 +170,9 @@
     <string name="fast_playback_speed">%.1fx speed</string>
     <string name="long_press_gesture">Long press gesture</string>
     <string name="long_press_gesture_desc">Long press to play at %.1fx speed</string>
+    <string name="long_press_background_opacity">Long press background opacity</string>
+    <string name="reset_long_press_background_opacity">Reset long press background opacity</string>
+    <string name="percentage_format">%1$d%%</string>
     <string name="best_fit">Best fit</string>
     <string name="stretch">Stretch</string>
     <string name="crop">Crop</string>

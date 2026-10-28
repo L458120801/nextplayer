@@ -34,4 +34,28 @@ class PlayerPreferencesTest {
             restored,
         )
     }
+
+    @Test
+    fun `long press background opacity defaults to opaque and survives serialization`() {
+        val defaultPreferences = Json.decodeFromString<PlayerPreferences>("{}")
+        assertEquals(
+            PlayerPreferences.DEFAULT_LONG_PRESS_BACKGROUND_OPACITY,
+            defaultPreferences.longPressBackgroundOpacity,
+        )
+
+        listOf(
+            0f,
+            0.5f,
+            1f,
+        ).forEach { opacity ->
+            val preferences = PlayerPreferences(longPressBackgroundOpacity = opacity)
+            val restored = Json.decodeFromString<PlayerPreferences>(
+                Json.encodeToString(value = preferences),
+            )
+            assertEquals(
+                opacity,
+                restored.longPressBackgroundOpacity,
+            )
+        }
+    }
 }

@@ -48,6 +48,7 @@ import dev.anilbeesetti.nextplayer.core.ui.preview.DayNightPreview
 import dev.anilbeesetti.nextplayer.core.ui.theme.NextPlayerTheme
 import dev.anilbeesetti.nextplayer.settings.composables.OptionsDialog
 import dev.anilbeesetti.nextplayer.settings.extensions.name
+import kotlin.math.roundToInt
 
 @Composable
 fun GesturePreferencesScreen(viewModel: GesturePreferencesViewModel) {
@@ -272,6 +273,42 @@ private fun GesturePreferencesScreenContent(
                                 value = GesturePreferenceDialog.LongPressControlsSpeedDialog,
                             ),
                         )
+                    },
+                )
+                PreferenceSlider(
+                    title = stringResource(R.string.long_press_background_opacity),
+                    description = stringResource(
+                        R.string.percentage_format,
+                        (state.preferences.longPressBackgroundOpacity * 100).roundToInt(),
+                    ),
+                    icon = NextIcons.Sensitivity,
+                    enabled = state.preferences.useLongPressControls,
+                    value = state.preferences.longPressBackgroundOpacity,
+                    valueRange = 0f..1f,
+                    steps = 99,
+                    onValueChange = {
+                        onAction(
+                            GesturePreferencesUiEvent.UpdateLongPressBackgroundOpacity(it),
+                        )
+                    },
+                    trailingContent = {
+                        FilledIconButton(
+                            enabled = state.preferences.useLongPressControls,
+                            onClick = {
+                                onAction(
+                                    GesturePreferencesUiEvent.UpdateLongPressBackgroundOpacity(
+                                        PlayerPreferences.DEFAULT_LONG_PRESS_BACKGROUND_OPACITY,
+                                    ),
+                                )
+                            },
+                        ) {
+                            Icon(
+                                imageVector = NextIcons.History,
+                                contentDescription = stringResource(
+                                    R.string.reset_long_press_background_opacity,
+                                ),
+                            )
+                        }
                     },
                 )
                 PreferenceSlider(

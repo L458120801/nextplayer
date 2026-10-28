@@ -160,6 +160,9 @@
     <string name="resolution">分辨率</string>
     <string name="long_press_gesture_desc">长按以 %.1f 倍速播放</string>
     <string name="long_press_gesture">长按手势</string>
+    <string name="long_press_background_opacity">长按提示背景透明度</string>
+    <string name="reset_long_press_background_opacity">重置长按提示背景透明度</string>
+    <string name="percentage_format">%1$d%%</string>
     <string name="require_audio_focus">获取音频焦点</string>
     <string name="fast_playback_speed">%.1f 倍速</string>
     <string name="require_audio_focus_desc">此播放器播放视频时暂停其他播放器，反之亦然</string>
