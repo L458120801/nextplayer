@@ -22,6 +22,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import dev.anilbeesetti.nextplayer.core.ui.R
 import dev.anilbeesetti.nextplayer.core.ui.theme.NextPlayerTheme
+import dev.anilbeesetti.nextplayer.feature.player.service.AssSubtitleRuntime
 import dev.anilbeesetti.nextplayer.feature.player.state.ControlsVisibilityState
 import dev.anilbeesetti.nextplayer.feature.player.state.PlayerOrientationEffect
 import dev.anilbeesetti.nextplayer.feature.player.state.rememberBrightnessState
@@ -38,6 +39,7 @@ import dev.anilbeesetti.nextplayer.feature.player.ui.PlayerGestures
 import dev.anilbeesetti.nextplayer.feature.player.ui.PlayerVerticalGestureIndicators
 import dev.anilbeesetti.nextplayer.feature.player.ui.SubtitleConfiguration
 import dev.anilbeesetti.nextplayer.feature.player.ui.preview.rememberPreviewPlayer
+import io.github.peerless2012.ass.media.AssHandler
 import kotlin.time.Duration.Companion.seconds
 
 val LocalControlsVisibilityState = compositionLocalOf<ControlsVisibilityState?> { null }
@@ -45,11 +47,16 @@ val LocalUseMaterialYouControls = compositionLocalOf { false }
 
 @OptIn(UnstableApi::class)
 @Composable
-fun MediaPlayerScreen(viewModel: PlayerViewModel, player: Player?) {
+fun MediaPlayerScreen(
+    viewModel: PlayerViewModel,
+    player: Player?,
+    assHandler: AssHandler? = null,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     MediaPlayerContent(
         player = player,
+        assHandler = assHandler,
         state = state,
         onAction = viewModel::onAction,
     )
@@ -61,8 +68,14 @@ internal fun MediaPlayerContent(
     player: Player?,
     state: PlayerUiState,
     onAction: (PlayerAction) -> Unit,
+    assHandler: AssHandler? = null,
 ) {
     val playerPreferences = state.playerPreferences
+
+    LaunchedEffect(playerPreferences.subtitleTextSize) {
+        AssSubtitleRuntime.updateSubtitleTextSize(playerPreferences.subtitleTextSize)
+    }
+
     val isPreview = LocalInspectionMode.current
     // Layout previews have neither a PlayerActivity nor a live video/audio session.
     val volumeState = if (!isPreview) {
@@ -155,6 +168,7 @@ internal fun MediaPlayerContent(
         if (pictureInPictureState != null) {
             PlayerContentFrame(
                 player = player,
+                assHandler = assHandler,
                 pictureInPictureState = pictureInPictureState,
                 videoZoomAndContentScaleState = videoZoomAndContentScaleState,
                 subtitleConfiguration = SubtitleConfiguration(

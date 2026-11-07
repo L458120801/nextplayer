@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.core.ui.R
 import dev.anilbeesetti.nextplayer.core.ui.components.NextOutlinedTextField
 import dev.anilbeesetti.nextplayer.feature.player.extensions.getName
@@ -56,6 +57,9 @@ fun BoxScope.SubtitleSelectorView(
     show: Boolean,
     player: Player,
     onSelectSubtitleClick: () -> Unit,
+    subtitleTextSize: Int = PlayerPreferences.DEFAULT_SUBTITLE_TEXT_SIZE,
+    useSystemCaptionStyle: Boolean = false,
+    onSubtitleTextSizeChange: (Int) -> Unit = {},
     onEvent: (SubtitleOptionsEvent) -> Unit = {},
     onDismiss: () -> Unit,
 ) {
@@ -109,6 +113,12 @@ fun BoxScope.SubtitleSelectorView(
                     onDismiss()
                 },
             ) { Text(text = stringResource(R.string.open_subtitle)) }
+            Spacer(modifier = Modifier.size(16.dp))
+            SubtitleTextSizeControl(
+                value = subtitleTextSize,
+                enabled = !useSystemCaptionStyle,
+                onValueChange = onSubtitleTextSizeChange,
+            )
             Spacer(modifier = Modifier.size(16.dp))
             DelayInput(
                 value = subtitleOptionsState.delayMilliseconds,

@@ -27,6 +27,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.session.CommandButton
 import androidx.media3.session.CommandButton.ICON_UNDEFINED
 import androidx.media3.session.MediaSession
@@ -41,8 +42,6 @@ import com.google.common.util.concurrent.ListenableFuture
 import dev.anilbeesetti.nextplayer.core.common.Logger
 import dev.anilbeesetti.nextplayer.core.common.extensions.deleteFiles
 import dev.anilbeesetti.nextplayer.core.common.extensions.getFilenameFromUri
-import dev.anilbeesetti.nextplayer.core.common.extensions.getLocalSubtitles
-import dev.anilbeesetti.nextplayer.core.common.extensions.getPath
 import dev.anilbeesetti.nextplayer.core.common.extensions.subtitleCacheDir
 import dev.anilbeesetti.nextplayer.core.data.repository.MediaRepository
 import dev.anilbeesetti.nextplayer.core.data.repository.PreferencesRepository
@@ -60,6 +59,7 @@ import dev.anilbeesetti.nextplayer.feature.player.extensions.audioTrackIndex
 import dev.anilbeesetti.nextplayer.feature.player.extensions.copy
 import dev.anilbeesetti.nextplayer.feature.player.extensions.externalAudio
 import dev.anilbeesetti.nextplayer.feature.player.extensions.externalAudioIndex
+import dev.anilbeesetti.nextplayer.feature.player.extensions.getLocalSubtitleConfigurations
 import dev.anilbeesetti.nextplayer.feature.player.extensions.getManuallySelectedTrackIndex
 import dev.anilbeesetti.nextplayer.feature.player.extensions.positionMs
 import dev.anilbeesetti.nextplayer.feature.player.extensions.setExtras
@@ -76,11 +76,13 @@ import dev.anilbeesetti.nextplayer.feature.player.model.DecoderTrackType
 import dev.anilbeesetti.nextplayer.feature.player.utils.isExplicitPlaylistItem
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.DecoderManager
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.DecoderMode
-import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
 import io.github.anilbeesetti.nextlib.media3ext.renderer.subtitleDelayMilliseconds
 import io.github.anilbeesetti.nextlib.media3ext.renderer.subtitleSpeed
 import io.github.anilbeesetti.nextlib.mediainfo.MediaInfoBuilder
-import java.io.File
+import io.github.peerless2012.ass.media.AssHandler
+import io.github.peerless2012.ass.media.kt.withAssMkvSupport
+import io.github.peerless2012.ass.media.parser.AssSubtitleParserFactory
+import io.github.peerless2012.ass.media.type.AssRenderType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -105,6 +107,7 @@ class PlayerService : MediaSessionService() {
     )
     private var mediaSession: MediaSession? = null
     private var artworkLoadJob: Job? = null
+    private var assHandler: AssHandler? = null
 
     private val preferencesRepository: PreferencesRepository by inject()
 
@@ -801,9 +804,25 @@ class PlayerService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         decoderManager = DecoderManager()
-        val renderersFactory = NextRenderersFactory(
+        AssSubtitleRuntime.updateSubtitleTextSize(playerPreferences.subtitleTextSize)
+        val assHandler = AssHandler(AssRenderType.OVERLAY_OPEN_GL)
+        this.assHandler = assHandler
+        val renderersFactory = NextAssRenderersFactory(
             context = applicationContext,
-        ).setDecoderManager(decoderManager = decoderManager)
+            decoderManager = decoderManager,
+            assHandler = assHandler,
+        )
+
+        val assSubtitleParserFactory = AssSubtitleParserFactory(assHandler)
+        val extractorsFactory = DefaultExtractorsFactory().withAssMkvSupport(
+            assSubtitleParserFactory = assSubtitleParserFactory,
+            assHandler = assHandler,
+        )
+        val mediaSourceFactory = DefaultMediaSourceFactory(
+            applicationContext,
+            extractorsFactory,
+        ).setDataSourceFactory(dataSourceFactory)
+            .setSubtitleParserFactory(assSubtitleParserFactory)
 
         trackSelector = DefaultTrackSelector(applicationContext).apply {
             setParameters(
@@ -819,9 +838,7 @@ class PlayerService : MediaSessionService() {
             .setTrackSelector(trackSelector)
             .setMediaSourceFactory(
                 ExternalAudioMediaSourceFactory(
-                    DefaultMediaSourceFactory(
-                        applicationContext,
-                    ).setDataSourceFactory(dataSourceFactory),
+                    mediaSourceFactory,
                 ),
             )
             .setAudioAttributes(
@@ -844,6 +861,8 @@ class PlayerService : MediaSessionService() {
                 }
             }
 
+        assHandler.init(player)
+        AssSubtitleRuntime.publish(assHandler)
         decoderManager.attach(player = player)
         player.addAnalyticsListener(decoderAnalyticsListener)
 
@@ -904,10 +923,15 @@ class PlayerService : MediaSessionService() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         artworkLoadJob?.cancel()
         loudnessEnhancer?.release()
         loudnessEnhancer = null
+        assHandler?.let { handler ->
+            mediaSession?.player?.removeListener(handler)
+            AssSubtitleRuntime.clear(handler)
+            handler.release()
+        }
+        assHandler = null
         mediaSession?.run {
             player.clearMediaItems()
             player.stop()
@@ -922,6 +946,7 @@ class PlayerService : MediaSessionService() {
         // lifetime of the process after playback ends.
         runBlocking { dataSourceFactory.release() }
         serviceScope.cancel()
+        super.onDestroy()
     }
 
     private fun Long.validDurationOrNull(): Long? = takeIf { it != C.TIME_UNSET && it >= 0 }
@@ -944,6 +969,16 @@ class PlayerService : MediaSessionService() {
                 val videoState = mediaRepository.getVideoState(uri = mediaItem.mediaId)
 
                 val externalSubs = videoState?.externalSubs ?: emptyList()
+                val subtitleTrackIndex =
+                    mediaItem.mediaMetadata.subtitleTrackIndex ?: videoState?.subtitleTrackIndex
+                val existingSubConfigurations =
+                    mediaItem.localConfiguration?.subtitleConfigurations ?: emptyList()
+                val hasRememberedSubtitleSelection = playerPreferences.rememberSelections &&
+                    subtitleTrackIndex != null
+                val autoSelectLocalSubtitle = !hasRememberedSubtitleSelection &&
+                    existingSubConfigurations.none {
+                        (it.selectionFlags and C.SELECTION_FLAG_DEFAULT) != 0
+                    }
                 val savedAudio = videoState?.externalAudio.orEmpty()
                 val externalAudio = withContext(Dispatchers.IO) {
                     savedAudio.filter { uri ->
@@ -957,24 +992,23 @@ class PlayerService : MediaSessionService() {
                     }
                 }
                 val localSubs = if (!isNetwork) {
-                    (videoState?.path ?: getPath(uri = uri))?.let {
-                        File(it).getLocalSubtitles(
-                            context = this@PlayerService,
-                            excludeSubsList = externalSubs,
-                        )
-                    } ?: emptyList()
+                    getLocalSubtitleConfigurations(
+                        videoUri = uri,
+                        subtitleEncoding = playerPreferences.subtitleTextEncoding,
+                        excludeSubsList = externalSubs,
+                        autoSelectFirst = autoSelectLocalSubtitle,
+                    )
                 } else {
                     emptyList()
                 }
 
-                val existingSubConfigurations =
-                    mediaItem.localConfiguration?.subtitleConfigurations ?: emptyList()
-                val subConfigurations = (localSubs + externalSubs).map { subtitleUri ->
+                val externalSubConfigurations = externalSubs.map { subtitleUri ->
                     uriToSubtitleConfiguration(
                         uri = subtitleUri,
                         subtitleEncoding = playerPreferences.subtitleTextEncoding,
                     )
                 }
+                val subConfigurations = localSubs + externalSubConfigurations
 
                 // Local items get a placeholder now and their real artwork in the background;
                 // network items have no thumbnail to extract, so keep any supplied artwork.
@@ -991,8 +1025,6 @@ class PlayerService : MediaSessionService() {
                 val videoScale = mediaItem.mediaMetadata.videoZoom ?: videoState?.videoScale
                 val audioTrackIndex =
                     mediaItem.mediaMetadata.audioTrackIndex ?: videoState?.audioTrackIndex
-                val subtitleTrackIndex =
-                    mediaItem.mediaMetadata.subtitleTrackIndex ?: videoState?.subtitleTrackIndex
                 val subtitleDelay =
                     mediaItem.mediaMetadata.subtitleDelayMilliseconds
                         ?: videoState?.subtitleDelayMilliseconds

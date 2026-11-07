@@ -82,6 +82,8 @@ class PlayerViewModel(
 
             is PlayerAction.UpdatePlayerBrightness -> updatePlayerBrightness(action.value)
 
+            is PlayerAction.UpdateSubtitleTextSize -> updateSubtitleTextSize(action.value)
+
             is PlayerAction.SetLoopMode -> setLoopMode(action.loopMode)
 
             is PlayerAction.ToggleTimeDisplay -> toggleTimeDisplay()
@@ -106,6 +108,16 @@ class PlayerViewModel(
     private fun updatePlayerBrightness(value: Float) {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences { it.copy(playerBrightness = value) }
+        }
+    }
+
+    private fun updateSubtitleTextSize(value: Int) {
+        val textSize = value.coerceIn(
+            PlayerPreferences.MIN_SUBTITLE_TEXT_SIZE,
+            PlayerPreferences.MAX_SUBTITLE_TEXT_SIZE,
+        )
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences { it.copy(subtitleTextSize = textSize) }
         }
     }
 
@@ -201,6 +213,7 @@ sealed interface PlayerAction {
     data class UpdateDecoderServiceState(val state: DecoderServiceState) : PlayerAction
     data class UpdatePlayWhenReady(val playWhenReady: Boolean) : PlayerAction
     data class UpdatePlayerBrightness(val value: Float) : PlayerAction
+    data class UpdateSubtitleTextSize(val value: Int) : PlayerAction
     data class SetLoopMode(val loopMode: LoopMode) : PlayerAction
     data object ToggleTimeDisplay : PlayerAction
     data class OnVideoZoomEvent(val event: VideoZoomEvent) : PlayerAction

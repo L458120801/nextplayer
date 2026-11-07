@@ -40,6 +40,7 @@ sshj = "0.40.0"
 bouncyCastle = "1.80.2"
 robolectric = "4.16.1"
 nextlib = "1.11.1-0.16.0"
+libassMedia = "0.5.1"
 universalChardet = "2.5.0"
 smbj = "0.14.0"
 smbjRpc = "0.12.13"
@@ -103,6 +104,8 @@ coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version
 github-albfernandez-juniversalchardet = { group="com.github.albfernandez", name = "juniversalchardet", version.ref="universalChardet" }
 github-anilbeesetti-nextlib-media3ext = { group = "io.github.anilbeesetti", name = "nextlib-media3ext", version.ref = "nextlib" }
 github-anilbeesetti-nextlib-mediainfo = { group = "io.github.anilbeesetti", name = "nextlib-mediainfo", version.ref = "nextlib" }
+peerless2012-ass-media = { group = "io.github.peerless2012", name = "ass-media", version.ref = "libassMedia" }
+peerless2012-ass-kt = { group = "io.github.peerless2012", name = "ass-kt", version.ref = "libassMedia" }
 google-android-material = { group = "com.google.android.material", name = "material", version.ref = "androidMaterial" }
 junit4 = { group = "junit", name = "junit", version.ref = "junit4" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }

@@ -69,6 +69,8 @@ data class PlayerPreferences(
         const val DEFAULT_VOLUME_GESTURE_SENSITIVITY = 0.50f
         const val DEFAULT_BRIGHTNESS_GESTURE_SENSITIVITY = 0.50f
         const val DEFAULT_LONG_PRESS_BACKGROUND_OPACITY = 1f
+        const val MIN_SUBTITLE_TEXT_SIZE = 10
+        const val MAX_SUBTITLE_TEXT_SIZE = 60
         const val DEFAULT_SUBTITLE_TEXT_SIZE = 20
         const val DEFAULT_CONTROLLER_AUTO_HIDE_TIMEOUT = 4
     }

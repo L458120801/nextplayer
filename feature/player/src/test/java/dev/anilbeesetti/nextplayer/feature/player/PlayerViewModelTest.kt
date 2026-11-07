@@ -5,6 +5,7 @@ import dev.anilbeesetti.nextplayer.core.data.repository.fake.FakeMediaRepository
 import dev.anilbeesetti.nextplayer.core.data.repository.fake.FakePreferencesRepository
 import dev.anilbeesetti.nextplayer.core.domain.GetSortedPlaylistUseCase
 import dev.anilbeesetti.nextplayer.core.domain.GetSortedVideosUseCase
+import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.feature.player.model.DecoderServiceState
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.DecoderMode
 import kotlinx.coroutines.Dispatchers
@@ -116,5 +117,49 @@ class PlayerViewModelTest {
             viewModel.onAction(action = PlayerAction.ToggleTimeDisplay)
             runCurrent()
             assertTrue(viewModel.state.value.playerPreferences.showRemainingTime)
+        }
+
+    @Test
+    fun `subtitle text size updates the global preference within supported bounds`() =
+        runTest(context = dispatcher) {
+            viewModel.onAction(PlayerAction.UpdateSubtitleTextSize(value = 37))
+            runCurrent()
+
+            assertEquals(
+                37,
+                preferences.playerPreferences.value.subtitleTextSize,
+            )
+            assertEquals(
+                37,
+                viewModel.state.value.playerPreferences.subtitleTextSize,
+            )
+
+            viewModel.onAction(PlayerAction.UpdateSubtitleTextSize(value = 100))
+            runCurrent()
+
+            assertEquals(
+                PlayerPreferences.MAX_SUBTITLE_TEXT_SIZE,
+                preferences.playerPreferences.value.subtitleTextSize,
+            )
+
+            viewModel.onAction(PlayerAction.UpdateSubtitleTextSize(value = -1))
+            runCurrent()
+
+            assertEquals(
+                PlayerPreferences.MIN_SUBTITLE_TEXT_SIZE,
+                preferences.playerPreferences.value.subtitleTextSize,
+            )
+
+            viewModel.onAction(
+                PlayerAction.UpdateSubtitleTextSize(
+                    value = PlayerPreferences.DEFAULT_SUBTITLE_TEXT_SIZE,
+                ),
+            )
+            runCurrent()
+
+            assertEquals(
+                PlayerPreferences.DEFAULT_SUBTITLE_TEXT_SIZE,
+                preferences.playerPreferences.value.subtitleTextSize,
+            )
         }
 }

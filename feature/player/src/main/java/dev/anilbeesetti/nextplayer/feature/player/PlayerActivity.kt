@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import android.widget.Toast
@@ -11,12 +12,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.core.util.Consumer
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -31,8 +34,12 @@ import dev.anilbeesetti.nextplayer.core.data.repository.PlaylistRepository
 import dev.anilbeesetti.nextplayer.core.ui.R as coreUiR
 import dev.anilbeesetti.nextplayer.core.ui.theme.NextPlayerTheme
 import dev.anilbeesetti.nextplayer.feature.player.extensions.OpenDocumentAtInitialUri
+import dev.anilbeesetti.nextplayer.feature.player.extensions.getSubtitleTreeUriFor
+import dev.anilbeesetti.nextplayer.feature.player.extensions.isSubtitleTreeFor
+import dev.anilbeesetti.nextplayer.feature.player.extensions.rememberSubtitleTreeUriFor
 import dev.anilbeesetti.nextplayer.feature.player.extensions.setExtras
 import dev.anilbeesetti.nextplayer.feature.player.extensions.uriToSubtitleConfiguration
+import dev.anilbeesetti.nextplayer.feature.player.service.AssSubtitleRuntime
 import dev.anilbeesetti.nextplayer.feature.player.service.addAudioTrack
 import dev.anilbeesetti.nextplayer.feature.player.service.addSubtitleTrack
 import dev.anilbeesetti.nextplayer.feature.player.service.decoderServiceState
@@ -116,6 +123,9 @@ class PlayerActivity : ComponentActivity() {
     private val subtitleFileSuspendLauncher =
         registerForSuspendActivityResult(contract = OpenDocumentAtInitialUri())
 
+    private val subtitleDirectorySuspendLauncher =
+        registerForSuspendActivityResult(contract = ActivityResultContracts.OpenDocumentTree())
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         isIntentNew = savedInstanceState?.getBoolean(
@@ -130,6 +140,7 @@ class PlayerActivity : ComponentActivity() {
         viewModel.output = playerOutput()
         playerApi = PlayerApi(activity = this)
         setContent {
+            val assHandler by AssSubtitleRuntime.handler.collectAsStateWithLifecycle()
             val player = rememberMediaController(
                 onBeforeRelease = ::onControllerStopped,
                 onExtrasChanged = { extras ->
@@ -155,6 +166,7 @@ class PlayerActivity : ComponentActivity() {
                 MediaPlayerScreen(
                     viewModel = viewModel,
                     player = player,
+                    assHandler = assHandler,
                 )
             }
         }
@@ -240,12 +252,15 @@ class PlayerActivity : ComponentActivity() {
     }
 
     private fun onControllerStopped() {
-        playbackRequestJob?.cancel()
+        if (!subtitleDirectorySuspendLauncher.isAwaitingResult) {
+            playbackRequestJob?.cancel()
+        }
         mediaController?.run {
             viewModel.onAction(PlayerAction.UpdatePlayWhenReady(playWhenReady = playWhenReady))
             removeListener(playbackStateListener)
             val shouldPlayInBackground = playInBackground || playerPreferences.autoBackgroundPlay
             if (subtitleFileSuspendLauncher.isAwaitingResult ||
+                subtitleDirectorySuspendLauncher.isAwaitingResult ||
                 audioFileSuspendLauncher.isAwaitingResult ||
                 !shouldPlayInBackground
             ) {
@@ -261,6 +276,7 @@ class PlayerActivity : ComponentActivity() {
     }
 
     private fun startPlayback() {
+        if (!isIntentNew && playbackRequestJob?.isActive == true) return
         val controller = mediaController ?: return
         if (!isIntentNew &&
             (controller.currentMediaItem == null || controller.playbackState == Player.STATE_ENDED)
@@ -300,6 +316,8 @@ class PlayerActivity : ComponentActivity() {
     }
 
     private suspend fun playVideo(uri: Uri, playlistId: Long?) = withContext(Dispatchers.Default) {
+        requestSubtitleDirectoryAccess(uri = uri)
+        val controller = snapshotFlow { mediaController }.filterNotNull().first()
         val savedQueue = playlistId
             ?.let { playlistRepository.getPlaylist(playlistId = it) }
             ?.toMediaQueue(selectedUri = uri.toString())
@@ -314,15 +332,13 @@ class PlayerActivity : ComponentActivity() {
             val startIndex = savedQueue?.startIndex ?: 0
             ensureActive()
             withContext(Dispatchers.Main) {
-                mediaController?.run {
-                    setMediaItems(
-                        mediaItems,
-                        startIndex,
-                        C.TIME_UNSET,
-                    )
-                    playWhenReady = viewModel.state.value.playWhenReady
-                    prepare()
-                }
+                controller.setMediaItems(
+                    mediaItems,
+                    startIndex,
+                    C.TIME_UNSET,
+                )
+                controller.playWhenReady = viewModel.state.value.playWhenReady
+                controller.prepare()
             }
             return@withContext
         }
@@ -374,14 +390,81 @@ class PlayerActivity : ComponentActivity() {
         }
 
         withContext(Dispatchers.Main) {
-            mediaController?.run {
-                setMediaItems(
-                    mediaItems,
-                    mediaItemIndexToPlay,
-                    playerApi.position?.toLong() ?: C.TIME_UNSET,
+            controller.setMediaItems(
+                mediaItems,
+                mediaItemIndexToPlay,
+                playerApi.position?.toLong() ?: C.TIME_UNSET,
+            )
+            controller.playWhenReady = viewModel.state.value.playWhenReady
+            controller.prepare()
+        }
+    }
+
+    private suspend fun requestSubtitleDirectoryAccess(uri: Uri) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        val initialDirectoryUri = withContext(Dispatchers.IO) {
+            getInitialDirectoryUri(fileUri = uri)
+        } ?: return
+        val hasAccess = withContext(Dispatchers.IO) {
+            getSubtitleTreeUriFor(videoUri = uri) != null
+        }
+        if (hasAccess) return
+
+        withContext(Dispatchers.Main) {
+            Toast.makeText(
+                this@PlayerActivity,
+                coreUiR.string.subtitle_folder_access_rationale,
+                Toast.LENGTH_LONG,
+            ).show()
+        }
+        val treeUri = withContext(Dispatchers.Main) {
+            subtitleDirectorySuspendLauncher.launch(input = initialDirectoryUri)
+        } ?: return
+
+        val grantsVideoDirectory = withContext(Dispatchers.IO) {
+            isSubtitleTreeFor(
+                videoUri = uri,
+                treeUri = treeUri,
+            )
+        }
+        if (!grantsVideoDirectory) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    this@PlayerActivity,
+                    coreUiR.string.subtitle_folder_access_wrong_folder,
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+            return
+        }
+
+        try {
+            contentResolver.takePersistableUriPermission(
+                treeUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+            )
+            val remembered = withContext(Dispatchers.IO) {
+                rememberSubtitleTreeUriFor(
+                    videoUri = uri,
+                    treeUri = treeUri,
                 )
-                playWhenReady = viewModel.state.value.playWhenReady
-                prepare()
+            }
+            if (!remembered) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        this@PlayerActivity,
+                        coreUiR.string.subtitle_folder_access_failed,
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
+        } catch (_: SecurityException) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    this@PlayerActivity,
+                    coreUiR.string.subtitle_folder_access_failed,
+                    Toast.LENGTH_LONG,
+                ).show()
             }
         }
     }

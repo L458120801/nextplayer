@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.media3.common.Player
 import androidx.media3.extractor.metadata.Chapter
+import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.core.model.VideoContentScale
 import dev.anilbeesetti.nextplayer.feature.player.extensions.noRippleClickable
 import dev.anilbeesetti.nextplayer.feature.player.state.SubtitleOptionsEvent
@@ -27,6 +28,9 @@ fun BoxScope.OverlayShowView(
     onAudioDecoderModeSelected: (DecoderMode) -> Unit = {},
     onSelectSubtitleClick: () -> Unit = {},
     onSelectAudioClick: () -> Unit = {},
+    subtitleTextSize: Int = PlayerPreferences.DEFAULT_SUBTITLE_TEXT_SIZE,
+    useSystemCaptionStyle: Boolean = false,
+    onSubtitleTextSizeChange: (Int) -> Unit = {},
     onSubtitleOptionEvent: (SubtitleOptionsEvent) -> Unit = {},
     onVideoContentScaleChanged: (VideoContentScale) -> Unit = {},
 ) {
@@ -61,6 +65,9 @@ fun BoxScope.OverlayShowView(
         show = overlayView == OverlayView.SUBTITLE_SELECTOR,
         player = player,
         onSelectSubtitleClick = onSelectSubtitleClick,
+        subtitleTextSize = subtitleTextSize,
+        useSystemCaptionStyle = useSystemCaptionStyle,
+        onSubtitleTextSizeChange = onSubtitleTextSizeChange,
         onEvent = onSubtitleOptionEvent,
         onDismiss = onDismiss,
     )

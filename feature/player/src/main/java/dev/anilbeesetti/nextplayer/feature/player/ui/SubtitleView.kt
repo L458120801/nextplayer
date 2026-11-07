@@ -7,6 +7,7 @@ import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat.getSystemService
@@ -17,6 +18,8 @@ import androidx.media3.ui.SubtitleView
 import dev.anilbeesetti.nextplayer.core.model.Font
 import dev.anilbeesetti.nextplayer.feature.player.extensions.toTypeface
 import dev.anilbeesetti.nextplayer.feature.player.state.rememberCuesState
+import io.github.peerless2012.ass.media.AssHandler
+import io.github.peerless2012.ass.media.widget.AssSubtitleView as LibassSubtitleView
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -32,16 +35,14 @@ fun SubtitleView(
         modifier = modifier.fillMaxSize(),
         factory = { context ->
             SubtitleView(context).apply {
-                val captioningManager =
-                    getSystemService(
-                        context,
-                        CaptioningManager::class.java,
-                    ) ?: return@apply
+                val captioningManager = getSystemService(
+                    context,
+                    CaptioningManager::class.java,
+                )
                 if (configuration.useSystemCaptionStyle) {
-                    val systemCaptionStyle = CaptionStyleCompat.createFromCaptionStyle(
-                        captioningManager.userStyle,
-                    )
-                    setStyle(systemCaptionStyle)
+                    captioningManager?.userStyle?.let { userStyle ->
+                        setStyle(CaptionStyleCompat.createFromCaptionStyle(userStyle))
+                    }
                 } else {
                     val userStyle = CaptionStyleCompat(
                         android.graphics.Color.WHITE,
@@ -52,7 +53,8 @@ fun SubtitleView(
                         android.graphics.Color.BLACK,
                         Typeface.create(
                             configuration.font.toTypeface(),
-                            Typeface.BOLD.takeIf { configuration.textBold } ?: Typeface.NORMAL,
+                            Typeface.BOLD.takeIf { configuration.textBold }
+                                ?: Typeface.NORMAL,
                         ),
                     )
                     setStyle(userStyle)
@@ -76,6 +78,22 @@ fun SubtitleView(
             }
         },
     )
+}
+
+@OptIn(UnstableApi::class)
+@Composable
+fun AssSubtitleOverlay(modifier: Modifier = Modifier, assHandler: AssHandler) {
+    key(assHandler) {
+        AndroidView(
+            modifier = modifier,
+            factory = { context ->
+                LibassSubtitleView(
+                    context,
+                    assHandler,
+                )
+            },
+        )
+    }
 }
 
 @Stable

@@ -46,4 +46,33 @@ class FileTest {
                 directory.deleteRecursively()
             }
         }
+
+    @Test
+    fun `get subtitles matches long Japanese release name with chs ass sidecar`() = runBlocking {
+        val directory = Files.createTempDirectory("subtitle-japanese-name").toFile()
+        try {
+            val videoName =
+                "[DMG] 冴えない彼女の育てかた 第01話「間違いだらけのプロローグ」 " +
+                    "[BDRip][HEVC_FLAC][1080P_Ma10P](7EB2FB58)"
+            val video = File(
+                directory,
+                "$videoName.mkv",
+            ).apply { createNewFile() }
+            val matchingSubtitle = File(
+                directory,
+                "$videoName.chs.ass",
+            ).apply { createNewFile() }
+            File(
+                directory,
+                "$videoName.backup.ass",
+            ).createNewFile()
+
+            assertEquals(
+                listOf(matchingSubtitle.name),
+                video.getSubtitles().map { it.name },
+            )
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
 }

@@ -78,6 +78,9 @@ private fun SubtitlePreferencesScreenContent(
     }
     val charsetResource = stringArrayResource(id = R.array.charsets_list)
     val context = LocalContext.current
+    val minSubtitleTextSize = PlayerPreferences.MIN_SUBTITLE_TEXT_SIZE.toFloat()
+    val maxSubtitleTextSize = PlayerPreferences.MAX_SUBTITLE_TEXT_SIZE.toFloat()
+    val subtitleTextSizeRange = minSubtitleTextSize..maxSubtitleTextSize
 
     val listFocusRequester = rememberTvListFocusRequester()
     Scaffold(
@@ -191,7 +194,7 @@ private fun SubtitlePreferencesScreenContent(
                     icon = NextIcons.FontSize,
                     enabled = state.preferences.useSystemCaptionStyle.not(),
                     value = state.preferences.subtitleTextSize.toFloat(),
-                    valueRange = 10f..60f,
+                    valueRange = subtitleTextSizeRange,
                     onValueChange = {
                         onAction(SubtitlePreferencesUiEvent.UpdateSubtitleFontSize(it.toInt()))
                     },

@@ -145,6 +145,7 @@ internal fun BoxScope.PlayerGestureIndicators(
                         coreUiR.string.fast_playback_speed,
                         tapGestureState.longPressSpeed,
                     ),
+                    color = Color.White,
                     style = MaterialTheme.typography.labelLarge,
                 )
             }

@@ -216,6 +216,11 @@ internal fun MediaPlayerControls(
                 },
                 onSelectSubtitleClick = { onAction(PlayerAction.SelectSubtitle) },
                 onSelectAudioClick = { onAction(PlayerAction.SelectAudio) },
+                subtitleTextSize = playerPreferences.subtitleTextSize,
+                useSystemCaptionStyle = playerPreferences.useSystemCaptionStyle,
+                onSubtitleTextSizeChange = {
+                    onAction(PlayerAction.UpdateSubtitleTextSize(value = it))
+                },
                 onSubtitleOptionEvent = {
                     onAction(PlayerAction.OnSubtitleOptionEvent(event = it))
                 },

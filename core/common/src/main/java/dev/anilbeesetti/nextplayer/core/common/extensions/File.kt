@@ -13,8 +13,7 @@ suspend fun File.getSubtitles(): List<File> = withContext(Dispatchers.IO) {
     val parentDir = parentFile ?: File(".")
     parentDir.listFiles()
         ?.asSequence()
-        ?.filter { it.isFile && it.extension.lowercase(Locale.ROOT) in subtitleExtensions }
-        ?.filter { subtitle -> subtitle.nameWithoutExtension.isSubtitleFor(mediaName) }
+        ?.filter { it.isFile && it.isSubtitleFor(mediaName) }
         ?.sortedBy { it.name.lowercase(Locale.ROOT) }
         ?.toList()
         .orEmpty()
@@ -125,6 +124,10 @@ private fun String.isSubtitleFor(mediaName: String): Boolean {
     }
 }
 
+fun File.isSubtitleFor(mediaName: String): Boolean =
+    extension.lowercase(Locale.ROOT) in subtitleExtensions &&
+        nameWithoutExtension.isSubtitleFor(mediaName)
+
 suspend fun File.getLocalSubtitles(
     context: Context,
     excludeSubsList: List<Uri> = emptyList(),
@@ -154,16 +157,7 @@ fun String.getThumbnail(): File? {
     return null
 }
 
-fun File.isSubtitle(): Boolean {
-    val subtitleExtensions = listOf(
-        "srt",
-        "ssa",
-        "ass",
-        "vtt",
-        "ttml",
-    )
-    return extension.lowercase() in subtitleExtensions
-}
+fun File.isSubtitle(): Boolean = extension.lowercase(Locale.ROOT) in subtitleExtensions
 
 fun File.deleteFiles() {
     try {

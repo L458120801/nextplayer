@@ -80,6 +80,9 @@
     <string name="preferred_audio_lang">Preferred audio language</string>
     <string name="preferred_audio_lang_description">Language of the audio track you want to use by default</string>
     <string name="subtitle">Subtitle</string>
+    <string name="subtitle_folder_access_rationale">Choose the folder containing this video to let Next Player find matching subtitles.</string>
+    <string name="subtitle_folder_access_wrong_folder">Choose the folder containing this video to enable automatic subtitles.</string>
+    <string name="subtitle_folder_access_failed">Couldn’t keep access to this folder. Please choose it again.</string>
     <string name="preferred_subtitle_lang">Preferred subtitle language</string>
     <string name="preferred_subtitle_lang_description">Language of the subtitle track you want to use by default</string>
     <string name="system_default">System Default</string>
@@ -276,6 +279,7 @@
     <string name="select_all">Select all</string>
     <string name="deselect_all">Deselect all</string>
     <string name="reset_seek_increment">Reset seek increment</string>
+    <string name="reset_subtitle_text_size">Reset subtitle text size</string>
     <string name="reset_controller_timeout">Reset controller timeout</string>
     <string name="reset_default_playback_speed">Reset default playback speed</string>
     <string name="seek_gesture_sensitivity">Seek gesture sensitivity</string>

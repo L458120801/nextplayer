@@ -23,6 +23,12 @@
 -dontwarn org.xmlpull.v1.**
 -dontnote org.xmlpull.v1.**
 
+# libass-android reads these Media3 MatroskaExtractor fields reflectively.
+-keepclassmembers class androidx.media3.extractor.mkv.MatroskaExtractor {
+    private androidx.media3.extractor.ExtractorOutput extractorOutput;
+    private androidx.media3.common.util.ParsableByteArray subtitleSample;
+}
+
 # SMBJ ProGuard Rules
 # Keep SMBJ classes
 -keep class com.hierynomus.smbj.** { *; }

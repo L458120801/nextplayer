@@ -69,6 +69,9 @@
     <string name="preferred_audio_lang">首选音频语言</string>
     <string name="preferred_audio_lang_description">您想要默认使用的音轨语言</string>
     <string name="subtitle">字幕</string>
+    <string name="subtitle_folder_access_rationale">请选择视频所在文件夹，以便 Next Player 查找匹配字幕。</string>
+    <string name="subtitle_folder_access_wrong_folder">请选择包含此视频的文件夹，才能自动加载字幕。</string>
+    <string name="subtitle_folder_access_failed">无法保存此文件夹的访问权限，请重新选择。</string>
     <string name="preferred_subtitle_lang">首选字幕语言</string>
     <string name="preferred_subtitle_lang_description">您想要默认使用的字幕语言</string>
     <string name="system_default">系统默认</string>
@@ -252,6 +255,7 @@
     <string name="shuffle_on">已开启随机播放</string>
     <string name="shuffle_off">已关闭随机播放</string>
     <string name="reset_seek_increment">重置跳转增量</string>
+    <string name="reset_subtitle_text_size">重置字幕文本大小</string>
     <string name="reset_controller_timeout">重置控制器超时</string>
     <string name="pan_gesture">平移手势</string>
     <string name="pan_gesture_description">缩放和平移视频</string>
