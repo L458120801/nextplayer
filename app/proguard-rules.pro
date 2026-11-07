@@ -40,10 +40,18 @@
 -keep class com.hierynomus.ntlm.** { *; }
 -keep class com.hierynomus.security.** { *; }
 
+# SMBJ loads the SPNEGO authenticator factory through Class.forName().
+-keep class com.hierynomus.smbj.auth.SpnegoAuthenticator$Factory { <init>(); }
+
+# mbassador discovers SMBJ event handlers by their @Handler annotation.
+-keepclassmembers class com.hierynomus.** {
+    @net.engio.mbassy.listener.Handler <methods>;
+}
+
 # Bouncy Castle registers JCA implementations by class name. SFTP uses an
 # app-specific provider name so Android's stripped platform BC is untouched.
--keep class org.bouncycastle.jcajce.provider.** { *; }
--keep class org.bouncycastle.jce.provider.** { *; }
+-keep class org.bouncycastle.jcajce.provider.** { public <init>(...); }
+-keep class org.bouncycastle.jce.provider.** { public <init>(...); }
 
 # mbassador creates the default handler invocation through Class.getConstructor().
 -keepclassmembers,allowobfuscation class net.engio.mbassy.dispatch.ReflectiveHandlerInvocation {
