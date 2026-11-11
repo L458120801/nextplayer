@@ -1,3 +1,4 @@
+import org.gradle.api.GradleException
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -7,6 +8,24 @@ plugins {
     alias(libs.plugins.koin.compiler)
 }
 
+val releaseStoreFile = providers.gradleProperty("nextplayerReleaseStoreFile").orNull
+val releaseStorePassword = providers.gradleProperty("nextplayerReleaseStorePassword").orNull
+val releaseKeyAlias = providers.gradleProperty("nextplayerReleaseKeyAlias").orNull
+val releaseKeyPassword = providers.gradleProperty("nextplayerReleaseKeyPassword").orNull
+val releaseSigningValues = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+)
+val hasReleaseSigningConfig = releaseSigningValues.all { !it.isNullOrBlank() }
+
+if (releaseSigningValues.any { !it.isNullOrBlank() } && !hasReleaseSigningConfig) {
+    throw GradleException(
+        "Release signing is partially configured. Set all nextplayerRelease properties in your user-level Gradle properties.",
+    )
+}
+
 android {
     namespace = "dev.anilbeesetti.nextplayer"
 
@@ -14,7 +33,7 @@ android {
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        applicationId = "dev.anilbeesetti.nextplayer"
+        applicationId = "com.sjkg.nextplayer"
         versionCode = 78
         versionName = "0.20.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -34,10 +53,33 @@ android {
         targetCompatibility = JavaVersion.toVersion(libs.versions.android.jvm.get().toInt())
     }
 
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("${project.rootDir}/app/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+
+        if (hasReleaseSigningConfig) {
+            create("production") {
+                storeFile = file(requireNotNull(releaseStoreFile))
+                storePassword = requireNotNull(releaseStorePassword)
+                keyAlias = requireNotNull(releaseKeyAlias)
+                keyPassword = requireNotNull(releaseKeyPassword)
+            }
+        }
+    }
+
     buildTypes {
         getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = if (hasReleaseSigningConfig) {
+                signingConfigs.getByName("production")
+            } else {
+                null
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -54,15 +96,6 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             applicationIdSuffix = ".release"
             matchingFallbacks.add("release")
-        }
-    }
-
-    signingConfigs {
-        getByName("debug") {
-            storeFile = file("${project.rootDir}/app/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
         }
     }
 
@@ -98,6 +131,24 @@ android {
         includeInApk = false
         // Disables dependency metadata when building Android App Bundles.
         includeInBundle = false
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val releasePackagingTaskRequested = allTasks.any { task ->
+        task.project == project &&
+            task.name.contains("release", ignoreCase = true) &&
+            !task.name.contains("with-debug-signing", ignoreCase = true) &&
+            listOf("assemble", "bundle", "package").any { prefix ->
+                task.name.startsWith(prefix, ignoreCase = true)
+            }
+    }
+    if (releasePackagingTaskRequested && !hasReleaseSigningConfig) {
+        throw GradleException(
+            "A production release requires signing. Set nextplayerReleaseStoreFile, " +
+                "nextplayerReleaseStorePassword, nextplayerReleaseKeyAlias, and " +
+                "nextplayerReleaseKeyPassword in your user-level Gradle properties.",
+        )
     }
 }
 
