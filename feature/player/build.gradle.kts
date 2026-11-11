@@ -42,6 +42,7 @@ dependencies {
     implementation(project(":core:ui"))
     implementation(project(":core:data"))
     implementation(project(":core:domain"))
+    implementation(project(":core:ass-media"))
     implementation(project(":core:media"))
     implementation(project(":core:model"))
     implementation(project(":core:ui"))
@@ -75,7 +76,6 @@ dependencies {
     implementation(libs.androidx.media3.session)
     implementation(libs.github.anilbeesetti.nextlib.media3ext)
     implementation(libs.github.anilbeesetti.nextlib.mediainfo)
-    implementation(libs.peerless2012.ass.media)
     implementation(libs.peerless2012.ass.kt)
 
     implementation(libs.kotlinx.coroutines.android)

@@ -116,6 +116,7 @@ class PlayerService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private var artworkLoadJob: Job? = null
     private var assHandler: AssHandler? = null
+    private var assHandlerPlayerListener: Player.Listener? = null
 
     private val preferencesRepository: PreferencesRepository by inject()
 
@@ -992,6 +993,16 @@ class PlayerService : MediaSessionService() {
             }
 
         assHandler.init(player)
+        player.removeListener(assHandler)
+        AssHandlerPlayerListener(
+            dispatchMediaItemTransition = assHandler::onMediaItemTransition,
+            dispatchTracksChanged = assHandler::onTracksChanged,
+            dispatchVideoSizeChanged = assHandler::onVideoSizeChanged,
+            dispatchSurfaceSizeChanged = assHandler::onSurfaceSizeChanged,
+        ).also { listener ->
+            assHandlerPlayerListener = listener
+            player.addListener(listener)
+        }
         AssSubtitleRuntime.publish(assHandler)
         decoderManager.attach(player = player)
         player.addAnalyticsListener(decoderAnalyticsListener)
@@ -1073,10 +1084,12 @@ class PlayerService : MediaSessionService() {
         loudnessEnhancer = null
         assHandler?.let { handler ->
             mediaSession?.player?.removeListener(handler)
+            assHandlerPlayerListener?.let { mediaSession?.player?.removeListener(it) }
             AssSubtitleRuntime.clear(handler)
             handler.release()
         }
         assHandler = null
+        assHandlerPlayerListener = null
         mediaSession?.run {
             player.clearMediaItems()
             player.stop()

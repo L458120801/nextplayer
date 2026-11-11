@@ -8,7 +8,6 @@ import androidx.media3.exoplayer.text.TextOutput
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.DecoderManager
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
 import io.github.peerless2012.ass.media.AssHandler
-import io.github.peerless2012.ass.media.render.AssRenderer
 import java.util.ArrayList
 
 @UnstableApi
@@ -35,6 +34,10 @@ internal class NextAssRenderersFactory(
             extensionRendererMode,
             out,
         )
-        out.add(AssRenderer(assHandler))
+        out.add(
+            AssPositionRenderer { positionUs ->
+                assHandler.videoTime = positionUs
+            },
+        )
     }
 }
