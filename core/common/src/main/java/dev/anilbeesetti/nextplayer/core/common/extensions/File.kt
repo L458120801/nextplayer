@@ -60,6 +60,7 @@ private val subtitleLanguageCodes = setOf(
     "hun",
     "ind",
     "ita",
+    "jap",
     "jpn",
     "jp",
     "kan",
@@ -117,9 +118,10 @@ private fun String.isSubtitleFor(mediaName: String): Boolean {
     val qualifiers = substring(startIndex = mediaName.length + 1).split('.')
     return qualifiers.isNotEmpty() && qualifiers.all { qualifier ->
         val normalizedQualifier = qualifier.lowercase(Locale.ROOT)
-        val isLanguageTag = normalizedQualifier.matches(
-            subtitleLanguageTagPattern,
-        ) && normalizedQualifier.substringBefore('-') in supportedSubtitleLanguageCodes
+        val isLanguageTag = normalizedQualifier.split('&').all { languageTag ->
+            languageTag.matches(subtitleLanguageTagPattern) &&
+                languageTag.substringBefore('-') in supportedSubtitleLanguageCodes
+        }
         normalizedQualifier in subtitleFlags || isLanguageTag
     }
 }

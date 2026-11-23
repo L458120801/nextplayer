@@ -75,4 +75,31 @@ class FileTest {
             directory.deleteRecursively()
         }
     }
+
+    @Test
+    fun `get subtitles matches composite language qualifier`() = runBlocking {
+        val directory = Files.createTempDirectory("subtitle-composite-language").toFile()
+        try {
+            val videoName = "[VCB-Studio] Seiren [01][Ma10p_1080p][x265_flac]"
+            val video = File(
+                directory,
+                "$videoName.mkv",
+            ).apply { createNewFile() }
+            val matchingSubtitle = File(
+                directory,
+                "$videoName.chs&jap.ass",
+            ).apply { createNewFile() }
+            File(
+                directory,
+                "$videoName.chs&unknown.ass",
+            ).createNewFile()
+
+            assertEquals(
+                listOf(matchingSubtitle.name),
+                video.getSubtitles().map { it.name },
+            )
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
 }
